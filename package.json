@@ -1,0 +1,47 @@
+{
+  "name": "z-phone",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.2.0",
+    "@mui/material": "^7.2.0",
+    "@mui/x-date-pickers": "^8.8.0",
+    "bcryptjs": "^3.0.2",
+    "dayjs": "^1.11.13",
+    "formidable": "^3.5.4",
+    "i18next": "^25.5.2",
+    "i18next-browser-languagedetector": "^8.2.0",
+    "i18next-resources-to-backend": "^1.2.1",
+    "jose": "^6.0.11",
+    "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0",
+    "mongoose": "^8.16.1",
+    "next": "^15.5.1-canary.14",
+    "next-i18next": "^15.4.2",
+    "pusher": "^5.2.0",
+    "pusher-js": "^8.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.7.3",
+    "react-redux": "^9.2.0",
+    "recharts": "^3.1.0",
+    "twilio": "^5.8.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "typescript": "^5"
+  }
+}
