@@ -16,7 +16,6 @@ export async function GET() {
   }
 }
 
-// POST create a new product
 export async function POST(req: Request) {
   await connectDB();
 
@@ -32,7 +31,7 @@ export async function POST(req: Request) {
     const color = formData.get("color") as string;
     const size = formData.get("size") as string;
 
-    // Handle images
+  
     const images: string[] = [];
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });

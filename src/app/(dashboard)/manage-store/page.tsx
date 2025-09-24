@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  Stack,
-} from "@mui/material";
+import { Box, Button, TextField, Typography, Paper, Stack, Alert, Divider } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/store";
@@ -16,9 +9,7 @@ import { useEffect, useState } from "react";
 
 export default function ManageStorePage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { store, loading } = useSelector((state: RootState) => state.storeData);
-
-  const ownerId = "user123"; // Replace with real auth userId
+  const { store, loading, error } = useSelector((state: RootState) => state.storeData);
 
   const [formData, setFormData] = useState({
     storeName: "",
@@ -31,26 +22,18 @@ export default function ManageStorePage() {
     instagram: "",
     twitter: "",
     tiktok: "",
-    logo: null as File | null,
+    logoBase64: "",
   });
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
-  // -----------------------------
-  // Fetch store on mount
-  // -----------------------------
   useEffect(() => {
-    console.log("🔹 Fetching store for user:", ownerId);
-    dispatch(fetchStore(ownerId));
-  }, [dispatch, ownerId]);
+    dispatch(fetchStore());
+  }, [dispatch]);
 
-  // -----------------------------
-  // Populate form when store exists
-  // -----------------------------
   useEffect(() => {
     if (store) {
-      console.log("✅ Store fetched from backend:", store);
-
       setFormData({
         storeName: store.storeName || "",
         description: store.description || "",
@@ -62,54 +45,41 @@ export default function ManageStorePage() {
         instagram: store.instagram || "",
         twitter: store.twitter || "",
         tiktok: store.tiktok || "",
-        logo: null,
+        logoBase64: "",
       });
-
-      if (store.logoUrl) {
-        console.log("🖼 Logo URL from backend:", store.logoUrl);
-        setLogoPreview(store.logoUrl.startsWith("http") ? store.logoUrl : `/uploads/${store.logoUrl}`);
-      } else {
-        console.log("⚠️ No logo found for this store");
-        setLogoPreview(null);
-      }
+      setLogoPreview(store.logoUrl || null);
     }
   }, [store]);
 
-  // -----------------------------
-  // Handle input change
-  // -----------------------------
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // -----------------------------
-  // Handle file upload
-  // -----------------------------
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files?.[0]) {
       const file = e.target.files[0];
-      console.log("📤 File selected for upload:", file);
-      setFormData({ ...formData, logo: file });
-      setLogoPreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result?.toString().split(",")[1] || "";
+        setFormData({ ...formData, logoBase64: base64 });
+        setLogoPreview(URL.createObjectURL(file));
+        setStatusMsg("✅ Logo ready to upload");
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  // -----------------------------
-  // Handle form submit
-  // -----------------------------
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fd = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value) fd.append(key, value as any);
-    });
-    console.log("📩 Submitting formData:", formData);
-    dispatch(saveStore({ userId: ownerId, formData: fd }));
+    setStatusMsg("⏳ Saving store...");
+    try {
+      await dispatch(saveStore(formData)).unwrap();
+      setStatusMsg("✅ Store saved successfully");
+    } catch (err: any) {
+      setStatusMsg(`❌ Failed to save store: ${err.message || err}`);
+    }
   };
 
-  // -----------------------------
-  // Handle cancel: reset form
-  // -----------------------------
   const handleCancel = () => {
     if (store) {
       setFormData({
@@ -123,76 +93,74 @@ export default function ManageStorePage() {
         instagram: store.instagram || "",
         twitter: store.twitter || "",
         tiktok: store.tiktok || "",
-        logo: null,
+        logoBase64: "",
       });
       setLogoPreview(store.logoUrl || null);
+      setStatusMsg("↩️ Changes canceled");
     }
   };
 
   return (
-    <Box sx={{ p: { xs: 0.5, md: 0.5 } }}>
-      <Typography variant="body1" fontWeight="bold">
+    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
+      <Typography variant="h5" fontWeight="bold" mb={1}>
         Manage Store
       </Typography>
-      <Typography variant="caption" color="text.secondary" mb={1}>
-        Add store image, general info, and contact details.
+      <Typography variant="body2" color="text.secondary" mb={3}>
+        Update your store details, contact information, and logo.
       </Typography>
 
-      {/* Image Upload */}
+      {statusMsg && (
+        <Alert severity={statusMsg.includes("❌") ? "error" : "success"} sx={{ mb: 2 }}>
+          {statusMsg}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Logo Upload - Clickable Area */}
       <Paper
         variant="outlined"
         sx={{
-          p: 1,
+          p: 3,
+          mb: 3,
           textAlign: "center",
           borderStyle: "dashed",
-          borderRadius: 2,
-          mb: 1,
+          borderRadius: 3,
           bgcolor: "grey.50",
+          position: "relative",
+          cursor: "pointer",
+          "&:hover": { bgcolor: "grey.100" },
         }}
+        onClick={() => document.getElementById("logoInput")?.click()}
       >
         {logoPreview ? (
           <img
             src={logoPreview}
             alt="Store Logo"
-            style={{
-              width: "100px",
-              height: "100px",
-              objectFit: "cover",
-              marginBottom: 8,
-              borderRadius: 8,
-            }}
+            style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 12 }}
           />
         ) : (
-          <Typography variant="caption" color="text.secondary" mb={1}>
-            No logo uploaded yet
-          </Typography>
+          <>
+            <Typography variant="body2" color="text.secondary" mb={1}>
+              Click here to upload logo
+            </Typography>
+            <CloudUploadIcon sx={{ fontSize: 40, color: "primary.main", mt: 1 }} />
+          </>
         )}
-
-        <CloudUploadIcon sx={{ fontSize: 30, color: "primary.main" }} />
-        <Typography variant="body2" fontWeight={500}>
-          Upload Store Photo
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Drag & drop image here, or click to upload
-        </Typography>
-
-        <Button
-          variant="contained"
-          component="label"
-          size="small"
-          sx={{ mt: 1, fontSize: 10 }}
-        >
-          Add Image
-          <input type="file" hidden onChange={handleFile} />
-        </Button>
+        <input type="file" id="logoInput" hidden onChange={handleFile} />
       </Paper>
 
-      {/* General Info */}
-      <Paper variant="outlined" sx={{ p: 1, borderRadius: 2, mb: 1 }}>
-        <Typography variant="body2" fontWeight="bold">
+      <Divider sx={{ mb: 3 }} />
+
+      {/* General Information */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
+        <Typography variant="subtitle1" fontWeight="bold" mb={2}>
           General Information
         </Typography>
-        <Stack spacing={0.5}>
+        <Stack spacing={2}>
           <TextField
             label="Store Name"
             name="storeName"
@@ -208,98 +176,36 @@ export default function ManageStorePage() {
             onChange={handleChange}
             fullWidth
             multiline
-            rows={2}
+            rows={3}
             size="small"
           />
         </Stack>
       </Paper>
 
-      {/* Contact Info */}
-      <Paper variant="outlined" sx={{ p: 1, borderRadius: 2, mb: 1 }}>
-        <Typography variant="body2" fontWeight="bold">
+      {/* Contact Information */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
+        <Typography variant="subtitle1" fontWeight="bold" mb={2}>
           Contact Information
         </Typography>
-        <Stack spacing={0.5}>
-          <TextField
-            label="Phone Number"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Postal Address"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Email Address"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Website"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Facebook"
-            name="facebook"
-            value={formData.facebook}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Instagram Handle"
-            name="instagram"
-            value={formData.instagram}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="X Handle"
-            name="twitter"
-            value={formData.twitter}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="TikTok Handle"
-            name="tiktok"
-            value={formData.tiktok}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-          />
+        <Stack spacing={2}>
+          <TextField label="Phone" name="phone" value={formData.phone} onChange={handleChange} fullWidth size="small" />
+          <TextField label="Address" name="address" value={formData.address} onChange={handleChange} fullWidth size="small" />
+          <TextField label="Email" name="email" value={formData.email} onChange={handleChange} fullWidth size="small" />
+          <TextField label="Website" name="website" value={formData.website} onChange={handleChange} fullWidth size="small" />
+          <TextField label="Facebook" name="facebook" value={formData.facebook} onChange={handleChange} fullWidth size="small" />
+          <TextField label="Instagram" name="instagram" value={formData.instagram} onChange={handleChange} fullWidth size="small" />
+          <TextField label="X Handle" name="twitter" value={formData.twitter} onChange={handleChange} fullWidth size="small" />
+          <TextField label="TikTok" name="tiktok" value={formData.tiktok} onChange={handleChange} fullWidth size="small" />
         </Stack>
       </Paper>
 
-      {/* Buttons */}
-      <Box display="flex" justifyContent="flex-end" gap={0.5}>
-        <Button variant="outlined" color="error" size="small" onClick={handleCancel}>
+      {/* Action Buttons */}
+      <Box display="flex" justifyContent="flex-end" gap={2}>
+        <Button variant="outlined" color="error" onClick={handleCancel}>
           Cancel
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? "Saving..." : "Save"}
+        <Button variant="contained" color="primary" onClick={handleSubmit} disabled={loading}>
+          {loading ? "Saving..." : "Save Changes"}
         </Button>
       </Box>
     </Box>

@@ -19,7 +19,7 @@ export default function DashboardContent() {
     </Box>
   </Grid>
 
-
+  {/* Yearly + Monthly */}
   <Grid xs={12} md={4} lg={4}>
     <Box display="flex" flexDirection="column" gap={2}>
       <Box sx={{ height: { xs: 140, sm: 160, md: 180, lg: 150 } }}>

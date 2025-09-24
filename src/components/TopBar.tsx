@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { IUser } from "@/types/IUser";
+
 import { pageTitles } from "@/utils/pageTitles"; // ✅ import mapping
 
 interface TopBarProps {
