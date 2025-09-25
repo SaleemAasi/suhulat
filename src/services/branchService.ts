@@ -1,42 +1,63 @@
+import { store } from "@/store";
+
 export interface Branch {
   _id?: string;
   name: string;
-  manager: string; // manager user ID
-  managerName?: string; // optional for display
+  manager: string;
+  store?: string;
 }
 
-const BASE_URL = "/api/branches";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+// Helper: get token from Redux
+const getToken = () => store.getState().auth.user?.token;
 
 export const branchService = {
-  getBranches: async (): Promise<Branch[]> => {
-    const res = await fetch(BASE_URL);
-    if (!res.ok) throw new Error("Failed to fetch branches");
+  async getBranches(storeId: string): Promise<Branch[]> {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/stores/${storeId}/branches`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to fetch branches");
     return res.json();
   },
 
-  createBranch: async (branch: Branch): Promise<Branch> => {
-    const res = await fetch(BASE_URL, {
+  async createBranch(storeId: string, branch: Branch): Promise<Branch> {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/stores/${storeId}/branches`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(branch),
     });
-    if (!res.ok) throw new Error("Failed to create branch");
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to create branch");
     return res.json();
   },
 
-  updateBranch: async (id: string, data: Partial<Branch>): Promise<Branch> => {
-    const res = await fetch(`${BASE_URL}/${id}`, {
+  async updateBranch(storeId: string, id: string, data: Partial<Branch>): Promise<Branch> {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/stores/${storeId}/branches/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to update branch");
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to update branch");
     return res.json();
   },
 
-  deleteBranch: async (id: string) => {
-    const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete branch");
+  async deleteBranch(storeId: string, id: string): Promise<{ id: string }> {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/stores/${storeId}/branches/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to delete branch");
     return res.json();
   },
 };

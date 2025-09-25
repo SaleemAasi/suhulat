@@ -1,5 +1,5 @@
 export async function fetchStoreService() {
-  const res = await fetch("/api/store", {
+  const res = await fetch("/api/stores", {
     headers: {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     },
@@ -9,7 +9,7 @@ export async function fetchStoreService() {
 }
 
 export async function saveStoreService(data: any) {
-  const res = await fetch("/api/store", {
+  const res = await fetch("/api/stores", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

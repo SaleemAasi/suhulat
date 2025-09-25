@@ -6,11 +6,14 @@ export interface IBranch extends Document {
   store: mongoose.Types.ObjectId;
 }
 
-const BranchSchema = new mongoose.Schema<IBranch>({
-  name: { type: String, required: true },
-  manager: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  store: { type: mongoose.Schema.Types.ObjectId, ref: "Store", required: true }, // ✅ Add this
-});
+const BranchSchema = new mongoose.Schema<IBranch>(
+  {
+    name: { type: String, required: true },
+    manager: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    store: { type: mongoose.Schema.Types.ObjectId, ref: "Store", required: true },
+  },
+  { timestamps: true }
+);
 
 const Branch: Model<IBranch> =
   mongoose.models.Branch || mongoose.model<IBranch>("Branch", BranchSchema);

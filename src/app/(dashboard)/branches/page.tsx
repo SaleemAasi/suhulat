@@ -35,80 +35,69 @@ import {
   updateBranch,
 } from "@/store/slices/branchSlice";
 import { fetchUsers } from "@/store/slices/userSlice";
+import { fetchStore } from "@/store/slices/storeSlice"; // ✅ import store
 import { Branch } from "@/services/branchService";
 
 export default function BranchesPage() {
   const dispatch = useDispatch<AppDispatch>();
-const { loading: branchLoading } = useSelector(
-  (state: RootState) => state.branches
-);
+
+  // Redux state
+  const { list: branches, loading: branchLoading } = useSelector(
+    (state: RootState) => state.branches
+  );
   const { list: users, loading: userLoading } = useSelector(
     (state: RootState) => state.users
   );
+  const { store, loading: storeLoading } = useSelector(
+    (state: RootState) => state.storeData
+  ); // ✅ get store from redux
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ id: "", name: "", manager: "" });
-  const [branchesWithManager, setBranchesWithManager] = useState<any[]>([]);
 
+  // Load store, branches, users on mount
   useEffect(() => {
-    const fetchData = async () => {
-      const branchesRes = await dispatch(fetchBranches()).unwrap();
-      await dispatch(fetchUsers()).unwrap();
-
-      const mappedBranches = branchesRes.map((b: any) => ({
-        ...b,
-        managerName: b.manager?.name || "Not assigned",
-        managerId: b.manager?._id || b.manager, 
-      }));
-      setBranchesWithManager(mappedBranches);
-    };
-
-    fetchData();
+    dispatch(fetchStore()); // ✅ fetch store first
+    dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Once store is available, fetch its branches
+  useEffect(() => {
+    if (store?._id) {
+      dispatch(fetchBranches(store._id));
+    }
+  }, [dispatch, store]);
 
   const managers = users.filter((u) => u.role === "Manager");
 
   const handleSave = async () => {
-    console.log("Saving branch:", form);
-
     if (!form.name || !form.manager) {
       console.warn("Branch name or manager is missing!");
       return;
     }
 
+    if (!store?._id) {
+      console.error("❌ No store found. Cannot create branch.");
+      return;
+    }
+
     try {
-      let savedBranch;
       if (form.id) {
-        savedBranch = await dispatch(
+        await dispatch(
           updateBranch({
             id: form.id,
             data: { name: form.name, manager: form.manager },
           })
         ).unwrap();
-     
       } else {
-        savedBranch = await dispatch(
-          createBranch({ name: form.name, manager: form.manager })
+        await dispatch(
+          createBranch({
+            storeId: store._id, // ✅ pass storeId
+            name: form.name,
+            manager: form.manager,
+          })
         ).unwrap();
-     
       }
-
-  
-      const branchWithManagerName = {
-        ...savedBranch,
-        managerName: savedBranch.manager?.name || "Not assigned",
-        managerId: savedBranch.manager?._id || savedBranch.manager,
-      };
-
-      setBranchesWithManager((prev) => {
-        if (form.id) {
-          return prev.map((b) =>
-            b._id === savedBranch._id ? branchWithManagerName : b
-          );
-        } else {
-          return [...prev, branchWithManagerName];
-        }
-      });
 
       setOpen(false);
       setForm({ id: "", name: "", manager: "" });
@@ -121,17 +110,19 @@ const { loading: branchLoading } = useSelector(
     setForm({
       id: branch._id,
       name: branch.name,
-    manager: branch.manager || "", 
+      manager:
+        typeof branch.manager === "string"
+          ? branch.manager
+          : branch.manager?._id || "",
     });
     setOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     await dispatch(deleteBranch(id));
-    setBranchesWithManager((prev) => prev.filter((b) => b._id !== id));
   };
 
-  if (branchLoading || userLoading) {
+  if (branchLoading || userLoading || storeLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
         <CircularProgress />
@@ -141,15 +132,21 @@ const { loading: branchLoading } = useSelector(
 
   return (
     <Box sx={{ p: 2.5 }}>
+      {/* Header */}
       <Box display="flex" justifyContent="space-between" mb={2.5}>
         <Typography variant="h5" fontWeight="bold">
           Branches
         </Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setOpen(true)}
+        >
           Add Branch
         </Button>
       </Box>
 
+      {/* Table */}
       <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
         <Table>
           <TableHead>
@@ -163,13 +160,17 @@ const { loading: branchLoading } = useSelector(
             </TableRow>
           </TableHead>
           <TableBody>
-            {branchesWithManager.map((b) => (
+            {branches.map((b) => (
               <TableRow key={b._id}>
                 <TableCell padding="checkbox">
                   <Checkbox />
                 </TableCell>
                 <TableCell>{b.name}</TableCell>
-                <TableCell>{b.managerName}</TableCell>
+                <TableCell>
+                  {typeof b.manager === "object"
+                    ? b.manager?.name
+                    : "Not assigned"}
+                </TableCell>
                 <TableCell align="center">
                   <IconButton color="primary" onClick={() => handleEdit(b)}>
                     <Edit />
@@ -184,6 +185,7 @@ const { loading: branchLoading } = useSelector(
         </Table>
       </TableContainer>
 
+      {/* Add/Edit Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{form.id ? "Edit Branch" : "Add Branch"}</DialogTitle>
         <DialogContent dividers>
