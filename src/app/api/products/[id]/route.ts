@@ -1,82 +1,101 @@
-// src/app/api/products/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/db";
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
 
-// DELETE a product
-export async function DELETE(req: NextRequest, context: any) {
-  await dbConnect();
-  const params = await context.params; // await params
-  const id = params.id;
-
+// GET single product
+export async function GET(_: Request, { params }: { params: { id: string } }) {
+  await connectDB();
   try {
-    const deleted = await Product.findByIdAndDelete(id);
-    if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    }
 
-// GET a single product
-export async function GET(req: NextRequest, context: any) {
-  await dbConnect();
-  const params = await context.params;
-  const id = params.id;
-
-  try {
-    const product = await Product.findById(id).lean();
+    const product = await Product.findById(params.id).populate("branches", "name");
     if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(product);
+
+    return NextResponse.json(product, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// UPDATE a product
-export async function PUT(req: NextRequest, context: any) {
-  await dbConnect();
-  const params = await context.params;
-  const id = params.id;
-
+// PUT update product
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  await connectDB();
   try {
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    }
+
     const formData = await req.formData();
+
+    // ✅ Convert branches → ObjectId
+    const branchValues = formData.getAll("branches") as string[];
+    const branches = branchValues
+      .filter((b) => !!b && mongoose.Types.ObjectId.isValid(b))
+      .map((bid) => new mongoose.Types.ObjectId(bid));
 
     const update: any = {
       name: formData.get("name"),
       category: formData.get("category"),
-      stock: Number(formData.get("stock")),
-      price: Number(formData.get("price")),
+      stock: Number(formData.get("stock") || 0),
+      price: Number(formData.get("price") || 0),
       unit: formData.get("unit"),
       description: formData.get("description"),
       color: formData.get("color"),
       size: formData.get("size"),
+      branches,
     };
 
-    const uploadDir = path.join(process.cwd(), "public/uploads");
-    fs.mkdirSync(uploadDir, { recursive: true });
+    // ✅ Handle new images (optional update)
+    const files = formData.getAll("images");
+    if (files.length > 0) {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-    const newImages: string[] = [];
-    const files = formData.getAll("images") as File[];
-
-    for (const file of files) {
-      if (file) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const filename = `${Date.now()}-${file.name}`;
-        const filePath = path.join(uploadDir, filename);
-        await fs.promises.writeFile(filePath, buffer);
-        newImages.push("/uploads/" + filename);
+      const images: string[] = [];
+      for (const file of files) {
+        if (file instanceof File) {
+          const bytes = Buffer.from(await file.arrayBuffer());
+          const fileName = `${Date.now()}-${file.name}`;
+          fs.writeFileSync(path.join(uploadsDir, fileName), bytes);
+          images.push(`/uploads/${fileName}`);
+        }
       }
+      update.images = images;
+      update.imageUrl = images[0] || null;
     }
 
-    if (newImages.length > 0) update.images = newImages;
+    const product = await Product.findByIdAndUpdate(params.id, update, { new: true })
+      .populate("branches", "name");
 
-    const product = await Product.findByIdAndUpdate(id, update, { new: true }).lean();
-    if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
 
-    return NextResponse.json(product);
+    return NextResponse.json(product, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE product
+export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+  await connectDB();
+  try {
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    }
+
+    const deleted = await Product.findByIdAndDelete(params.id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Deleted successfully" }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

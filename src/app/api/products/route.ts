@@ -1,24 +1,27 @@
-// src/app/api/products/route.ts
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
 
 // GET all products
 export async function GET() {
   await connectDB();
   try {
-    const products = await Product.find({}).lean(); // fetch all products
-    return NextResponse.json(products);
+    const products = await Product.find({})
+      .populate("branches", "name")
+      .lean();
+
+    return NextResponse.json(products, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
+// POST create product
 export async function POST(req: Request) {
   await connectDB();
-
   try {
     const formData = await req.formData();
 
@@ -31,18 +34,21 @@ export async function POST(req: Request) {
     const color = formData.get("color") as string;
     const size = formData.get("size") as string;
 
-  
-    const images: string[] = [];
+    const branchValues = formData.getAll("branches") as string[];
+    const branches = branchValues
+      .filter((b) => !!b && mongoose.Types.ObjectId.isValid(b))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
     const files = formData.getAll("images");
+    const images: string[] = [];
     for (const file of files) {
       if (file instanceof File) {
         const bytes = Buffer.from(await file.arrayBuffer());
         const fileName = `${Date.now()}-${file.name}`;
-        const filePath = path.join(uploadsDir, fileName);
-        fs.writeFileSync(filePath, bytes);
+        fs.writeFileSync(path.join(uploadsDir, fileName), bytes);
         images.push(`/uploads/${fileName}`);
       }
     }
@@ -56,13 +62,15 @@ export async function POST(req: Request) {
       description,
       color,
       size,
+      branches,
       images,
-      imageUrl: images[0] || null, // first image as main
+      imageUrl: images[0] || null,
     });
 
-    return NextResponse.json(product, { status: 201 });
+    const populatedProduct = await Product.findById(product._id).populate("branches", "name");
+
+    return NextResponse.json(populatedProduct, { status: 201 });
   } catch (err: any) {
-    console.error("❌ Error saving product:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

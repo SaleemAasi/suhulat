@@ -1,4 +1,3 @@
-// models/Product.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IProduct extends Document {
@@ -8,11 +7,12 @@ export interface IProduct extends Document {
   price: number;
   unit: string;
   description?: string;
-  color: string;
-  size: string;
+  color?: string;
+  size?: string;
   status?: string;
-  imageUrl?: string;   
-  images?: string[];   
+  imageUrl?: string;
+  images?: string[];
+  branches?: mongoose.Types.ObjectId[];
 }
 
 const ProductSchema: Schema = new Schema(
@@ -28,6 +28,7 @@ const ProductSchema: Schema = new Schema(
     status: { type: String, default: "Draft" },
     imageUrl: String,
     images: [String],
+    branches: [{ type: Schema.Types.ObjectId, ref: "Branch" }],
   },
   { timestamps: true }
 );

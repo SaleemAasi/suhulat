@@ -3,7 +3,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -35,13 +34,12 @@ import {
   updateBranch,
 } from "@/store/slices/branchSlice";
 import { fetchUsers } from "@/store/slices/userSlice";
-import { fetchStore } from "@/store/slices/storeSlice"; // ✅ import store
+import { fetchStore } from "@/store/slices/storeSlice"; 
 import { Branch } from "@/services/branchService";
 
 export default function BranchesPage() {
   const dispatch = useDispatch<AppDispatch>();
 
-  // Redux state
   const { list: branches, loading: branchLoading } = useSelector(
     (state: RootState) => state.branches
   );
@@ -50,18 +48,16 @@ export default function BranchesPage() {
   );
   const { store, loading: storeLoading } = useSelector(
     (state: RootState) => state.storeData
-  ); // ✅ get store from redux
+  );
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ id: "", name: "", manager: "" });
 
-  // Load store, branches, users on mount
   useEffect(() => {
-    dispatch(fetchStore()); // ✅ fetch store first
+    dispatch(fetchStore());
     dispatch(fetchUsers());
   }, [dispatch]);
 
-  // Once store is available, fetch its branches
   useEffect(() => {
     if (store?._id) {
       dispatch(fetchBranches(store._id));
@@ -77,7 +73,7 @@ export default function BranchesPage() {
     }
 
     if (!store?._id) {
-      console.error("❌ No store found. Cannot create branch.");
+      console.error("❌ No store found. Cannot create/update branch.");
       return;
     }
 
@@ -85,6 +81,7 @@ export default function BranchesPage() {
       if (form.id) {
         await dispatch(
           updateBranch({
+            storeId: store._id,
             id: form.id,
             data: { name: form.name, manager: form.manager },
           })
@@ -92,7 +89,7 @@ export default function BranchesPage() {
       } else {
         await dispatch(
           createBranch({
-            storeId: store._id, // ✅ pass storeId
+            storeId: store._id,
             name: form.name,
             manager: form.manager,
           })
@@ -119,7 +116,12 @@ export default function BranchesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await dispatch(deleteBranch(id));
+    if (!store?._id) {
+      console.error("❌ No store found. Cannot delete branch.");
+      return;
+    }
+
+    await dispatch(deleteBranch({ storeId: store._id, id }));
   };
 
   if (branchLoading || userLoading || storeLoading) {
@@ -151,9 +153,6 @@ export default function BranchesPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox />
-              </TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Branch Manager</TableCell>
               <TableCell align="center">Action</TableCell>
@@ -162,9 +161,6 @@ export default function BranchesPage() {
           <TableBody>
             {branches.map((b) => (
               <TableRow key={b._id}>
-                <TableCell padding="checkbox">
-                  <Checkbox />
-                </TableCell>
                 <TableCell>{b.name}</TableCell>
                 <TableCell>
                   {typeof b.manager === "object"
@@ -187,19 +183,33 @@ export default function BranchesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{form.id ? "Edit Branch" : "Add Branch"}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.3rem" }}>
+          {form.id ? "Edit Branch" : "Add Branch"}
+        </DialogTitle>
         <DialogContent dividers>
           <Box display="flex" flexDirection="column" gap={3} mt={1}>
             <TextField
+              fullWidth
+              variant="outlined"
               label="Branch Name"
+              placeholder="Enter branch name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              InputLabelProps={{ shrink: !!form.name }}
             />
+
             <FormControl fullWidth>
-              <InputLabel>Manager</InputLabel>
+              <InputLabel shrink>Manager</InputLabel>
               <Select
+                displayEmpty
                 value={form.manager}
                 onChange={(e) => setForm({ ...form, manager: e.target.value })}
+                renderValue={(selected) =>
+                  selected
+                    ? users.find((u) => u._id === selected)?.name
+                    : "Select a Manager"
+                }
+                sx={{ borderRadius: 2 }}
               >
                 {managers.length === 0 ? (
                   <MenuItem disabled>No managers available</MenuItem>
@@ -214,9 +224,20 @@ export default function BranchesPage() {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setOpen(false)} sx={{ textTransform: "none" }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+              px: 3,
+              fontWeight: "bold",
+            }}
+            onClick={handleSave}
+          >
             Save
           </Button>
         </DialogActions>
