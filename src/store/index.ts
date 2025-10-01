@@ -5,7 +5,7 @@ import userReducer from './slices/userSlice';  // 👈 import it
 import branchReducer from './slices/branchSlice'; 
 import productReducer from './slices/productSlice'; 
 import storeReducer from './slices/storeSlice';
-
+import salesReducer from './slices/salesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,7 +14,7 @@ export const store = configureStore({
      branches: branchReducer, 
      products:productReducer,
       storeData: storeReducer,
-      // 👈 register here
+     sales: salesReducer, 
   },
 });
 
