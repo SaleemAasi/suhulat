@@ -10,6 +10,8 @@ export const pageTitles: Record<string, string> = {
   "/role": "Role",
   "/owner": "Owner",
   "/manager": "Manager",
+    "/employees": "Employees",
+      "/employee-salary": "Employee Salary",
   "/cashier": "Cashier",
   "/reports": "Reports",
   "/generate-ai": "AI Business",

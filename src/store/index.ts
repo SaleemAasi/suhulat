@@ -7,6 +7,8 @@ import productReducer from './slices/productSlice';
 import storeReducer from './slices/storeSlice';
 import salesReducer from './slices/salesSlice';
 import purchaseReducer from "./slices/purchaseSlice";
+import employeesReducer from "./slices/employeeSlice";
+import salaryReducer from "./slices/salarySlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -16,6 +18,8 @@ export const store = configureStore({
       storeData: storeReducer,
      sales: salesReducer, 
     purchases: purchaseReducer, 
+    employees:employeesReducer,
+       salaries: salaryReducer,
   },
 });
 

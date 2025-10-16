@@ -80,7 +80,7 @@ export default function LoginPage() {
                 />
 
                 <Typography variant="h5" gutterBottom>
-                    Z-Phone
+                    SUHULAT
                 </Typography>
 
                 <TextField

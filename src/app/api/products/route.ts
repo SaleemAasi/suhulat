@@ -3,7 +3,6 @@ import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 import fs from "fs";
 import path from "path";
-import mongoose from "mongoose";
 
 // GET all products
 export async function GET() {
@@ -12,7 +11,6 @@ export async function GET() {
     const products = await Product.find({})
       .populate("branches", "name")
       .lean();
-
     return NextResponse.json(products, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -33,15 +31,11 @@ export async function POST(req: Request) {
     const description = formData.get("description") as string;
     const color = formData.get("color") as string;
     const size = formData.get("size") as string;
+    const branches = formData.getAll("branches") as string[];
 
-    const branchValues = formData.getAll("branches") as string[];
-    const branches = branchValues
-      .filter((b) => !!b && mongoose.Types.ObjectId.isValid(b))
-      .map((id) => new mongoose.Types.ObjectId(id));
-
+    // Handle images
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
     const files = formData.getAll("images");
     const images: string[] = [];
     for (const file of files) {
@@ -67,9 +61,7 @@ export async function POST(req: Request) {
       imageUrl: images[0] || null,
     });
 
-    const populatedProduct = await Product.findById(product._id).populate("branches", "name");
-
-    return NextResponse.json(populatedProduct, { status: 201 });
+    return NextResponse.json(product, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

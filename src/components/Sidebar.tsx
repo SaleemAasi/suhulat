@@ -15,6 +15,8 @@ import {
   Typography,
   IconButton,
 } from '@mui/material';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import {
@@ -50,47 +52,63 @@ export default function Sidebar({ role }: SidebarProps) {
     setMobileOpen(!mobileOpen);
   };
 
-  const menuItems: MenuItem[] = [
-    { label: 'Dashboard', path: '/' },
-    {
-      label: 'Store Management',
-      children: [
-        { label: 'Manage Store', icon: <StoreIcon fontSize="small" />, path: '/manage-store' },
-        { label: 'Branches', icon: <BranchIcon fontSize="small" />, path: '/branches' },
-      ],
-    },
-    {
-      label: 'Inventory',
-      children: [{ label: 'Product', icon: <ProductIcon fontSize="small" />, path: '/products' }],
-    },
-    {
-      label: 'Sales / Purchases',
-      children: [
-        { label: 'Sales', icon: <SalesIcon fontSize="small" />, path: '/sales' },
-        { label: 'Purchases', icon: <PurchaseIcon fontSize="small" />, path: '/purchases' },
-      ],
-    },
-    {
-      label: 'Invoice',
-      children: [{ label: 'Generate Complaint Invoice', icon: <InvoiceIcon fontSize="small" />, path: '/generate-invoice' }],
-    },
-    {
-      label: 'User',
-      children: [
-        { label: 'Owner', icon: <UsersIcon fontSize="small" />, path: '/owner' },
-        { label: 'Manager', icon: <UsersIcon fontSize="small" />, path: '/manager' },
-        { label: 'Cashier', icon: <UsersIcon fontSize="small" />, path: '/cashier' },
-      ],
-    },
-    {
-      label: 'Reports',
-      children: [{ label: 'Reports', icon: <ReportsIcon fontSize="small" />, path: '/reports' }],
-    },
-    {
-      label: 'AI Business',
-      children: [{ label: 'Generate AI Business', icon: <AIIcon fontSize="small" />, path: '/generate-ai' }],
-    },
-  ];
+const menuItems: MenuItem[] = [
+  { label: 'Dashboard', path: '/' },
+  {
+    label: 'Store Management',
+    children: [
+      { label: 'Manage Store', icon: <StoreIcon fontSize="small" />, path: '/manage-store' },
+      { label: 'Branches', icon: <BranchIcon fontSize="small" />, path: '/branches' },
+    ],
+  },
+  {
+    label: 'Inventory',
+    children: [
+      { label: 'Product', icon: <ProductIcon fontSize="small" />, path: '/products' },
+    ],
+  },
+  {
+    label: 'Sales / Purchases',
+    children: [
+      { label: 'Sales', icon: <SalesIcon fontSize="small" />, path: '/sales' },
+      { label: 'Purchases', icon: <PurchaseIcon fontSize="small" />, path: '/purchases' },
+    ],
+  },
+  {
+    label: 'Invoice',
+    children: [
+      { label: 'Generate Complaint Invoice', icon: <InvoiceIcon fontSize="small" />, path: '/generate-invoice' },
+    ],
+  },
+  {
+    label: 'User',
+    children: [
+      { label: 'Owner', icon: <UsersIcon fontSize="small" />, path: '/owner' },
+      { label: 'Manager', icon: <UsersIcon fontSize="small" />, path: '/manager' },
+      { label: 'Cashier', icon: <UsersIcon fontSize="small" />, path: '/cashier' },
+    ],
+  },
+  {
+    label: 'Employees',
+    children: [
+      { label: 'Employee List', icon: <UsersIcon fontSize="small" />, path: '/employees' },
+      { label: 'Employee Salary', icon: <AttachMoneyIcon fontSize="small" />, path: '/employee-salary' },
+    ],
+  },
+  {
+    label: 'Reports',
+    children: [
+      { label: 'Reports', icon: <ReportsIcon fontSize="small" />, path: '/reports' },
+    ],
+  },
+  {
+    label: 'AI Business',
+    children: [
+      { label: 'Generate AI Business', icon: <AIIcon fontSize="small" />, path: '/generate-ai' },
+    ],
+  },
+];
+
 
 const renderMenu = (items: MenuItem[]) =>
   items.map((item) => {

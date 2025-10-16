@@ -2,7 +2,6 @@
 
 import {
   Box,
-  Checkbox,
   IconButton,
   Paper,
   Table,
@@ -29,10 +28,9 @@ import { createUser, fetchUsers, updateUser, deleteUser } from "../store/slices/
 import { User as UserType } from "../services/userService";
 
 interface UsersTableProps {
-  title: string; // "Managers", "Owners", "Cashiers"
+  title: string;
 }
 
-// Map title -> role
 const getRoleFromTitle = (title: string) => {
   if (title.toLowerCase().includes("manager")) return "Manager";
   if (title.toLowerCase().includes("owner")) return "Owner";
@@ -53,7 +51,6 @@ export default function UsersTable({ title }: UsersTableProps) {
     password: "",
   });
 
-  // Fetch users on mount
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
@@ -68,16 +65,12 @@ export default function UsersTable({ title }: UsersTableProps) {
       const payload = { ...formData, role } as UserType;
 
       if (editUserId) {
-        // Update existing user
         await dispatch(updateUser({ id: editUserId, data: payload })).unwrap();
       } else {
-        // Create new user
         await dispatch(createUser(payload)).unwrap();
       }
 
-      // Refetch users after changes
       dispatch(fetchUsers());
-
       setOpen(false);
       setFormData({ name: "", phone: "", email: "", password: "" });
       setEditUserId(null);
@@ -87,7 +80,12 @@ export default function UsersTable({ title }: UsersTableProps) {
   };
 
   const handleEdit = (user: UserType) => {
-    setFormData({ name: user.name, phone: user.phone, email: user.email, password: "" });
+    setFormData({
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      password: "",
+    });
     setEditUserId(user._id || user.id || null);
     setOpen(true);
   };
@@ -103,7 +101,6 @@ export default function UsersTable({ title }: UsersTableProps) {
     }
   };
 
-  // Filter users by role
   const users = list.filter(
     (u) => u.role?.toLowerCase() === getRoleFromTitle(title).toLowerCase()
   );
@@ -134,17 +131,17 @@ export default function UsersTable({ title }: UsersTableProps) {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell padding="checkbox"><Checkbox /></TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Phone Number</TableCell>
-                  <TableCell>Email Address</TableCell>
-                  <TableCell align="center">Action</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Phone Number</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Email Address</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }} align="center">
+                    Action
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user._id || user.id}>
-                    <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
                     <TableCell>
                       <Box display="flex" alignItems="center" gap={1}>
                         <Avatar src={user.avatar || "/avatar.png"} sx={{ width: 30, height: 30 }} />

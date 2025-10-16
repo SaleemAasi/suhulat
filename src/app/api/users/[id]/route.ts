@@ -14,17 +14,16 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, enum: ["Manager", "Owner", "Cashier", "Admin"] },
+  salary: { type: Number, required: true, default: 0 },
 });
 
 if (mongoose.models.User) delete mongoose.models.User;
 const User = mongoose.model("User", UserSchema);
 
-// PUT - update user
+// ✅ PUT - update user
 export async function PUT(req: Request, context: { params: { id: string } }) {
   try {
-    // ✅ Await params explicitly
     const { id } = await context.params;
-
     const body = await req.json();
 
     if (body.password) {
@@ -44,11 +43,10 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
   }
 }
 
-// DELETE - remove user
+// ✅ DELETE - remove user
 export async function DELETE(req: Request, context: { params: { id: string } }) {
   try {
     const { id } = await context.params;
-
     const deletedUser = await User.findByIdAndDelete(id);
 
     if (!deletedUser) {

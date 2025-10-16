@@ -12,240 +12,309 @@ import {
   Paper,
   Typography,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  MenuItem,
-  Card,
-  CardContent,
-  Grid,
+  Autocomplete,
 } from "@mui/material";
-import { Delete, TrendingUp, Store, ShoppingCart, AttachMoney } from "@mui/icons-material";
-import { useEffect, useState, useMemo } from "react";
+import { Delete } from "@mui/icons-material";
+import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store";
-import { fetchSales, createSale, deleteSale } from "@/store/slices/salesSlice";
 import { fetchProducts } from "@/store/slices/productSlice";
 import { fetchBranches } from "@/store/slices/branchSlice";
-import { fetchStore } from "@/store/slices/storeSlice";
+import { createSale } from "@/store/slices/salesSlice";
 
-export default function SalesPage() {
+interface SaleItem {
+  productId: string;
+  name: string;
+  color: string;
+  size: string;
+  price: number;
+  quantity: number;
+  total: number;
+}
+
+export default function CashierSalesPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { list: sales } = useSelector((state: RootState) => state.sales);
   const { list: products } = useSelector((state: RootState) => state.products);
   const { list: branches } = useSelector((state: RootState) => state.branches);
-  const store = useSelector((state: RootState) => state.storeData.store);
 
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ product: "", branch: "", quantity: 1 });
+  const [searchText, setSearchText] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
+  const [selectedBranchId, setSelectedBranchId] = useState(""); // selected branch ID
+  const taxPercent = 5;
 
-  // Fetch data
+  const invoiceRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    dispatch(fetchSales());
     dispatch(fetchProducts());
-    dispatch(fetchStore());
+    dispatch(fetchBranches());
   }, [dispatch]);
 
+  // Set default branch ID when branches are loaded
   useEffect(() => {
-    if (store?._id) {
-      dispatch(fetchBranches(store._id));
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0]._id);
     }
-  }, [dispatch, store?._id]);
+  }, [branches, selectedBranchId]);
 
-  // 🟢 KPI Calculations
-  const today = new Date().toDateString();
+  const handleAddProduct = () => {
+    if (!selectedProduct) return;
 
-  const todaySales = useMemo(
-    () =>
-      sales.filter((s) => new Date(s.date).toDateString() === today),
-    [sales, today]
+    if (quantity <= 0) {
+      alert("Quantity must be at least 1!");
+      return;
+    }
+
+    if (quantity > selectedProduct.stock) {
+      alert(`Not enough stock! Available: ${selectedProduct.stock}`);
+      return;
+    }
+
+    const item: SaleItem = {
+      productId: selectedProduct._id,
+      name: selectedProduct.name,
+      color: selectedProduct.color,
+      size: selectedProduct.size,
+      price: selectedProduct.price,
+      quantity,
+      total: selectedProduct.price * quantity,
+    };
+
+    setSaleItems([...saleItems, item]);
+    setSelectedProduct(null);
+    setQuantity(1);
+    setSearchText("");
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const updated = [...saleItems];
+    updated.splice(index, 1);
+    setSaleItems(updated);
+  };
+
+  // Calculations
+  const subtotal = saleItems.reduce((acc, item) => acc + item.total, 0);
+  const discountAmount = discountType === "percent" ? (subtotal * discount) / 100 : discount;
+  const taxAmount = ((subtotal - discountAmount) * taxPercent) / 100;
+  const totalAmount = subtotal - discountAmount + taxAmount;
+
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const totalSalesAmount = sales.reduce((acc, s) => acc + s.total, 0);
-  const todaySalesAmount = todaySales.reduce((acc, s) => acc + s.total, 0);
+  const handleSaveInvoice = async () => {
+    if (!selectedBranchId) return alert("Please select a branch!");
+    if (saleItems.length === 0) return alert("No items to save!");
 
-  // Save Sale
-const handleSave = async () => {
-  const productObj = products.find((p) => p._id === form.product);
-  if (!productObj) return;
+    const saleData = {
+      items: saleItems.map((item) => ({
+        product: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+      })),
+      branch: selectedBranchId,
+      subtotal,
+      discount,
+      discountType,
+      tax: taxAmount,
+      total: totalAmount,
+      date: new Date(),
+    };
 
-  // Check stock
-  if (form.quantity > productObj.stock) {
-    alert(`Not enough stock! Available: ${productObj.stock}`);
-    return;
-  }
-
-  const total = productObj.price * form.quantity;
-
-  await dispatch(
-    createSale({
-      product: form.product,
-      branch: form.branch,
-      quantity: form.quantity,
-      total,
-    })
-  ).unwrap();
-
-  // Optionally: reduce stock locally in redux (if you want instant update)
-  // dispatch(updateProductStock({ id: productObj._id, sold: form.quantity }));
-
-  setForm({ product: "", branch: "", quantity: 1 });
-  setOpen(false);
-};
-
-
-  const handleDelete = async (id: string) => {
-    await dispatch(deleteSale(id)).unwrap();
+    try {
+      await dispatch(createSale(saleData)).unwrap();
+      alert("Invoice saved successfully!");
+      // Reset for new customer
+      setSaleItems([]);
+      setDiscount(0);
+      setDiscountType("percent");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save invoice!");
+    }
   };
+
+  const handlePrintInvoice = () => {
+    if (!invoiceRef.current) return;
+    const printContent = invoiceRef.current.innerHTML;
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) return;
+
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice</title>
+          <style>
+            body { font-family: monospace; font-size: 12px; width: 300px; padding: 10px; }
+            .invoice-box { width: 100%; padding: 10px; }
+            h2 { text-align: center; font-size: 14px; margin-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; }
+            td { padding: 2px 0; }
+            .totals { margin-top: 10px; }
+            .totals p { margin: 2px 0; font-size: 12px; }
+            hr { border: 0; border-top: 1px dashed #000; margin: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-box">
+            ${printContent}
+          </div>
+          <script>
+            window.print();
+            window.onafterprint = function() { window.close(); }
+          </script>
+        </body>
+      </html>
+    `);
+  };
+
+  // Get selected branch name for display
+  const selectedBranch = branches.find((b) => b._id === selectedBranchId);
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* 🔥 KPI Dashboard Section */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: "primary.main", color: "white" }}>
-            <CardContent>
-              <Typography variant="h6">Today's Sales</Typography>
-              <Typography variant="h4" fontWeight="bold">
-                ${todaySalesAmount}
-              </Typography>
-              <TrendingUp sx={{ fontSize: 30, opacity: 0.8 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: "success.main", color: "white" }}>
-            <CardContent>
-              <Typography variant="h6">Total Sales</Typography>
-              <Typography variant="h4" fontWeight="bold">
-                ${totalSalesAmount}
-              </Typography>
-              <AttachMoney sx={{ fontSize: 30, opacity: 0.8 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: "info.main", color: "white" }}>
-            <CardContent>
-              <Typography variant="h6">Orders</Typography>
-              <Typography variant="h4" fontWeight="bold">
-                {sales.length}
-              </Typography>
-              <ShoppingCart sx={{ fontSize: 30, opacity: 0.8 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: "warning.main", color: "white" }}>
-            <CardContent>
-              <Typography variant="h6">Branches</Typography>
-              <Typography variant="h4" fontWeight="bold">
-                {branches.length}
-              </Typography>
-              <Store sx={{ fontSize: 30, opacity: 0.8 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <Typography variant="h6" fontWeight="bold" mb={2}>
+        New Sale
+      </Typography>
 
-      {/* Header */}
-      <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h6" fontWeight="bold">
-          Sales Records
-        </Typography>
-        <Button variant="contained" onClick={() => setOpen(true)}>
-          + Add Sale
+      {/* Product search */}
+      <Box display="flex" gap={2} mb={2}>
+        <Autocomplete
+          fullWidth
+          options={filteredProducts}
+          getOptionLabel={(option) =>
+            `${option.name} | Color: ${option.color} | Size: ${option.size} | Price: ${option.price} | Stock: ${option.stock}`
+          }
+          inputValue={searchText}
+          onInputChange={(e, value) => setSearchText(value)}
+          value={selectedProduct}
+          onChange={(e, value) => setSelectedProduct(value)}
+          renderInput={(params) => <TextField {...params} label="Search Product" />}
+        />
+        <TextField
+          type="number"
+          label="Quantity"
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          sx={{ width: 100 }}
+        />
+        <Button variant="contained" onClick={handleAddProduct}>
+          Add
         </Button>
       </Box>
 
-      {/* Table */}
-      <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell>Branch</TableCell>
-              <TableCell>Quantity</TableCell>
-              <TableCell>Total</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell align="center">Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sales.map((s) => (
-              <TableRow key={s._id}>
-                <TableCell>{s.product?.name}</TableCell>
-                <TableCell>{s.branch?.name}</TableCell>
-                <TableCell>{s.quantity}</TableCell>
-                <TableCell>${s.total}</TableCell>
-                <TableCell>{new Date(s.date).toLocaleDateString()}</TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    color="error"
-                    size="small"
-                    onClick={() => handleDelete(s._id!)}
-                  >
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* Sale items table */}
+      {saleItems.length > 0 && (
+        <Box>
+          <TableContainer component={Paper} sx={{ maxHeight: 300, mb: 2 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Product</TableCell>
+                  <TableCell>Color</TableCell>
+                  <TableCell>Size</TableCell>
+                  <TableCell>Price</TableCell>
+                  <TableCell>Qty</TableCell>
+                  <TableCell>Total</TableCell>
+                  <TableCell align="center">Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {saleItems.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell>{item.color}</TableCell>
+                    <TableCell>{item.size}</TableCell>
+                    <TableCell>${item.price}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>${item.total}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        color="error"
+                        size="small"
+                        onClick={() => handleRemoveItem(index)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      {/* Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Add Sale</DialogTitle>
-        <DialogContent dividers>
-          <TextField
-            select
-            fullWidth
-            margin="dense"
-            label="Product"
-            value={form.product}
-            onChange={(e) => setForm({ ...form, product: e.target.value })}
-          >
-            {products.map((p) => (
-              <MenuItem key={p._id} value={p._id}>
-                {p.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            fullWidth
-            margin="dense"
-            label="Branch"
-            value={form.branch}
-            onChange={(e) => setForm({ ...form, branch: e.target.value })}
-          >
-            {branches.map((b) => (
-              <MenuItem key={b._id} value={b._id}>
-                {b.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            fullWidth
-            margin="dense"
-            type="number"
-            label="Quantity"
-            value={form.quantity}
-            onChange={(e) =>
-              setForm({ ...form, quantity: Number(e.target.value) })
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+          {/* Discount input */}
+          <Box display="flex" alignItems="center" gap={2} mb={2}>
+            <TextField
+              type="number"
+              label={`Discount (${discountType === "percent" ? "%" : "$"})`}
+              value={discount}
+              onChange={(e) => setDiscount(Number(e.target.value))}
+              sx={{ width: 150 }}
+            />
+            <TextField
+              select
+              label="Type"
+              value={discountType}
+              onChange={(e) =>
+                setDiscountType(e.target.value as "percent" | "amount")
+              }
+              sx={{ width: 120 }}
+              SelectProps={{ native: true }}
+            >
+              <option value="percent">Percent</option>
+              <option value="amount">Amount</option>
+            </TextField>
+          </Box>
+
+          {/* Invoice preview */}
+          <Box ref={invoiceRef} sx={{ p: 2, border: "1px dashed #ddd", mb: 2 }}>
+            <h2>My Store</h2>
+            <Typography>
+              Branch: {selectedBranch ? selectedBranch.name : "Unknown"}
+            </Typography>
+            <Typography>Date: {new Date().toLocaleString()}</Typography>
+            <hr />
+            <Table size="small">
+              <TableBody>
+                {saleItems.map((item, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell>{item.quantity} x ${item.price}</TableCell>
+                    <TableCell align="right">${item.total}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <hr />
+            <Box className="totals">
+              <Typography>Subtotal: ${subtotal.toFixed(2)}</Typography>
+              <Typography>Discount: ${discountAmount.toFixed(2)}</Typography>
+              <Typography>Tax ({taxPercent}%): ${taxAmount.toFixed(2)}</Typography>
+              <Typography fontWeight="bold">Total: ${totalAmount.toFixed(2)}</Typography>
+            </Box>
+            <Typography style={{ textAlign: "center", marginTop: 10 }}>
+              Thank you for shopping!
+            </Typography>
+          </Box>
+
+          <Box display="flex" gap={2}>
+            <Button variant="contained" color="success" onClick={handlePrintInvoice}>
+              Print Invoice
+            </Button>
+            <Button variant="contained" color="primary" onClick={handleSaveInvoice}>
+              Save & Reset
+            </Button>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }
+
+

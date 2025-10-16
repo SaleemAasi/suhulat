@@ -1,4 +1,3 @@
-// app/api/users/route.ts
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
@@ -18,10 +17,10 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, enum: ["Manager", "Owner", "Cashier", "Admin"] },
+  salary: { type: Number, required: true, default: 0 }, // ✅ added salary
 });
 
-// ✅ Always overwrite old cached model
-mongoose.models.User && delete mongoose.models.User;
+if (mongoose.models.User) delete mongoose.models.User;
 const User = mongoose.model("User", UserSchema);
 
 // ✅ POST - create user
@@ -33,13 +32,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Role is required" }, { status: 400 });
     }
 
-    // ✅ Hash password before saving
+    if (body.salary === undefined) {
+      return NextResponse.json({ error: "Salary is required" }, { status: 400 });
+    }
+
     const hashedPassword = bcrypt.hashSync(body.password, 10);
 
     const newUser = await User.create({ ...body, password: hashedPassword });
-    console.log("✅ User saved:", newUser);
-
-    // Don't return password to client
     const { password, ...userWithoutPassword } = newUser.toObject();
 
     return NextResponse.json(userWithoutPassword);
