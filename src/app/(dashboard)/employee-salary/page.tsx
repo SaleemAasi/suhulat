@@ -29,7 +29,7 @@ import {
   createSalary,
   editSalary,
   removeSalary,
-} from "@/store/slices/salarySlice"; // ✅ Fixed
+} from "@/store/slices/salarySlice";
 import { fetchEmployees } from "@/store/slices/employeeSlice";
 
 import dayjs, { Dayjs } from "dayjs";
@@ -59,6 +59,7 @@ export default function EmployeeSalaryPage() {
     bonus: "",
     advance: "",
     deductions: "",
+    previousBalance: "", // ✅ New Field Added
     month: "",
   });
 
@@ -96,6 +97,7 @@ export default function EmployeeSalaryPage() {
       bonus: Number(form.bonus) || 0,
       advance: Number(form.advance) || 0,
       deductions: Number(form.deductions) || 0,
+      previousBalance: Number(form.previousBalance) || 0, // ✅ added
     };
 
     if (editId) {
@@ -112,6 +114,7 @@ export default function EmployeeSalaryPage() {
       bonus: "",
       advance: "",
       deductions: "",
+      previousBalance: "",
       month: "",
     });
     setEditId(null);
@@ -134,13 +137,14 @@ export default function EmployeeSalaryPage() {
     }
   };
 
-  // Calculate Net Salary
+  // ✅ Calculate Net Salary (Now includes previous balance)
   const calculateNetSalary = () => {
-    const { basicSalary, bonus, advance, deductions } = form;
+    const { basicSalary, bonus, advance, deductions, previousBalance } = form;
     return (
       (Number(basicSalary) || 0) +
-      (Number(bonus) || 0) -
-      (Number(advance) || 0) -
+      (Number(bonus) || 0) +
+      (Number(advance) || 0) +
+      (Number(previousBalance) || 0) -
       (Number(deductions) || 0)
     );
   };
@@ -180,6 +184,7 @@ export default function EmployeeSalaryPage() {
                   <TableCell sx={{ fontWeight: "bold" }}>Bonus</TableCell>
                   <TableCell sx={{ fontWeight: "bold" }}>Advance</TableCell>
                   <TableCell sx={{ fontWeight: "bold" }}>Deductions</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Prev Balance</TableCell>
                   <TableCell sx={{ fontWeight: "bold" }}>Net Salary</TableCell>
                   <TableCell sx={{ fontWeight: "bold" }} align="center">
                     Actions
@@ -190,7 +195,11 @@ export default function EmployeeSalaryPage() {
               <TableBody>
                 {salaries.map((r: any) => {
                   const netSalary =
-                    r.basicSalary + r.bonus - r.advance - r.deductions;
+                    r.basicSalary +
+                    r.bonus +
+                    r.advance +
+                    (r.previousBalance || 0) -
+                    r.deductions;
                   return (
                     <TableRow key={r._id}>
                       <TableCell>{r.month}</TableCell>
@@ -206,6 +215,7 @@ export default function EmployeeSalaryPage() {
                       <TableCell>{r.bonus}</TableCell>
                       <TableCell>{r.advance}</TableCell>
                       <TableCell>{r.deductions}</TableCell>
+                      <TableCell>{r.previousBalance || 0}</TableCell>
                       <TableCell sx={{ fontWeight: "bold", color: "green" }}>
                         {new Intl.NumberFormat("en-PK", {
                           style: "currency",
@@ -308,6 +318,15 @@ export default function EmployeeSalaryPage() {
               name="deductions"
               fullWidth
               value={form.deductions}
+              onChange={handleChange}
+            />
+
+            {/* ✅ New Field for Previous Pending Salary */}
+            <TextField
+              label="Remaining Dues (PKR)"
+              name="previousBalance"
+              fullWidth
+              value={form.previousBalance}
               onChange={handleChange}
             />
 

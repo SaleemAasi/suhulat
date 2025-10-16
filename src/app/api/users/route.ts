@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-// ✅ Connect to MongoDB
+// ✅ Connect to MongoDB (cleaned)
 if (!mongoose.connection.readyState) {
-  mongoose
-    .connect(process.env.MONGODB_URI || "")
-    .then(() => console.log("✅ MongoDB connected"))
-    .catch((err) => console.error("❌ MongoDB connection error:", err));
+  mongoose.connect(process.env.MONGODB_URI || "");
 }
 
 // ✅ Define Schema
@@ -17,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, enum: ["Manager", "Owner", "Cashier", "Admin"] },
-  salary: { type: Number, required: true, default: 0 }, // ✅ added salary
+  salary: { type: Number, required: true, default: 0 },
 });
 
 if (mongoose.models.User) delete mongoose.models.User;

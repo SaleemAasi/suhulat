@@ -93,6 +93,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Employee List', icon: <UsersIcon fontSize="small" />, path: '/employees' },
       { label: 'Employee Salary', icon: <AttachMoneyIcon fontSize="small" />, path: '/employee-salary' },
+         { label: 'Attendence', icon: <AttachMoneyIcon fontSize="small" />, path: '/attendacne' },
     ],
   },
   {
