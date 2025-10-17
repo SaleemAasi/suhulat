@@ -11,11 +11,13 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+
   Divider,
   Typography,
   IconButton,
 } from '@mui/material';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -93,7 +95,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Employee List', icon: <UsersIcon fontSize="small" />, path: '/employees' },
       { label: 'Employee Salary', icon: <AttachMoneyIcon fontSize="small" />, path: '/employee-salary' },
-         { label: 'Attendence', icon: <AttachMoneyIcon fontSize="small" />, path: '/attendacne' },
+          { label: 'Attendence', icon: <AccessTimeIcon fontSize="small" />, path: '/attendance' },
     ],
   },
   {
